@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Perfil NFC de Mascota</title>
+  <style>
+    :root {
+      --primary: #1f4e78;
+      --accent: #25d366;
+      --danger: #d93025;
+      --bg: #f3f5f8;
+      --card: #ffffff;
+      --text: #1e242b;
+      --muted: #5f6b7a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body { background: var(--bg); color: var(--text); padding: 16px; display: flex; justify-content: center; }
+    .container { width: 100%; max-width: 440px; background: var(--card); border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.08); }
+    .alert-banner { background: var(--danger); color: #fff; text-align: center; padding: 10px; font-weight: 700; font-size: 0.9rem; display: none; }
+    .header { background: var(--primary); color: #fff; padding: 24px 20px; text-align: center; }
+    .avatar { width: 104px; height: 104px; border-radius: 50%; object-fit: cover; border: 4px solid #fff; margin-bottom: 10px; background: #dce4ec; }
+    .header h1 { font-size: 1.6rem; margin-bottom: 4px; }
+    .header p { font-size: 0.92rem; opacity: 0.9; }
+    .content { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+    .section { border: 1px solid #e5e9f0; border-radius: 14px; padding: 14px; }
+    .section h2 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--primary); margin-bottom: 8px; }
+    .info-row { display: flex; justify-content: space-between; font-size: 0.93rem; padding: 4px 0; border-bottom: 1px dashed #eef1f5; }
+    .info-row:last-child { border-bottom: none; }
+    .badge-med { background: #fff4e5; border-left: 4px solid #f59e0b; padding: 10px; border-radius: 8px; font-size: 0.92rem; color: #78350f; }
+    .vac-list { list-style: none; font-size: 0.9rem; display: flex; flex-direction: column; gap: 6px; }
+    .vac-list li::before { content: "✓ "; color: #16a34a; font-weight: bold; }
+    .btn { display: block; width: 100%; text-align: center; padding: 13px; border-radius: 12px; font-weight: 700; text-decoration: none; border: none; cursor: pointer; font-size: 0.98rem; margin-top: 8px; }
+    .btn-wa { background: var(--accent); color: #fff; }
+    .btn-gps { background: #eef4fb; color: var(--primary); border: 1px solid #c7dbf2; }
+    .btn-send { background: var(--primary); color: #fff; }
+    input, textarea { width: 100%; padding: 10px 12px; margin-top: 8px; border: 1px solid #cfd8e3; border-radius: 10px; font-size: 0.93rem; }
+    .note { font-size: 0.8rem; color: var(--muted); margin-top: 6px; text-align: center; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="lostBanner" class="alert-banner">⚠️ MASCOTA REPORTADA COMO EXTRAVIADA</div>
+    
+    <div class="header">
+      <img id="petPhoto" class="avatar" src="https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=300&q=80" alt="Foto mascota" />
+      <h1 id="petName">Cargando...</h1>
+      <p id="petBreed"></p>
+    </div>
+
+    <div class="content">
+      <!-- CONTACTO DINÁMICO -->
+      <div class="section">
+        <h2>Contacto con el dueño</h2>
+
+        <!-- MODO DIRECTO -->
+        <div id="directContact" class="hidden">
+          <a id="waLink" class="btn btn-wa" href="#" target="_blank">💬 Enviar WhatsApp al dueño</a>
+          <button class="btn btn-gps" onclick="compartirUbicacionDirecta()">📍 Enviar mi ubicación por WhatsApp</button>
+        </div>
+
+        <!-- MODO PRIVADO (FORMULARIO PUENTE) -->
+        <div id="privateContact" class="hidden">
+          <p style="font-size:0.88rem; color:var(--muted);">Por privacidad, el teléfono del dueño está oculto. Déjale tus datos o ubicación y le llegará una alerta inmediata:</p>
+          <form id="bridgeForm" action="https://formsubmit.co/dueno.max@ejemplo.com" method="POST">
+            <input type="hidden" name="_subject" value="🐾 Alerta NFC: ¡Alguien encontró a tu mascota!" />
+            <input type="hidden" name="_captcha" value="false" />
+            <input type="text" name="telefono_encontrador" placeholder="Tu teléfono o WhatsApp para contactarte" required />
+            <textarea name="mensaje" rows="2" placeholder="¿Dónde viste a la mascota o cómo está?" required></textarea>
+            <input type="text" id="gpsField" name="ubicacion_gps" placeholder="Ubicación GPS (opcional)" readonly />
+            <button type="button" class="btn btn-gps" onclick="capturarUbicacionFormulario()">📍 Adjuntar mi ubicación actual</button>
+            <button type="submit" class="btn btn-send">Enviar aviso al dueño</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- ALERTAS MÉDICAS -->
+      <div class="section">
+        <h2>Salud y cuidados</h2>
+        <div id="petAlerts" class="badge-med"></div>
+      </div>
+
+      <!-- DATOS GENERALES -->
+      <div class="section">
+        <h2>Información general</h2>
+        <div class="info-row"><span>Edad actual:</span><strong id="petAge"></strong></div>
+        <div class="info-row"><span>Nacimiento:</span><span id="petDob"></span></div>
+        <div class="info-row"><span>Zona:</span><strong id="petZone"></strong></div>
+      </div>
+
+      <!-- CARTILLA DE VACUNACIÓN -->
+      <div class="section">
+        <h2>Cartilla de vacunación</h2>
+        <ul id="petVaccines" class="vac-list"></ul>
+      </div>
+
+      <p class="note">Identificador NFC • Perfil digital sin baterías</p>
+    </div>
+  </div>
+
+  <script>
+    const MASCOTAS_DB = {
+      "PET-001": {
+        nombre: "Max",
+        raza: "Perro • Mestizo mediano",
+        nacimiento: "2023-05-14",
+        alergias: "Alérgico al pollo. Muy amigable pero se asusta con cohetes.",
+        vacunas: ["Rabia (2026-02-10)", "Séxtuple (2026-02-10)", "Desparasitación (2026-08-15)"],
+        zona: "Col. Centro / Zona Metepec",
+        modo_contacto: "privado",
+        telefono: "5217220000000",
+        correo: "dueno.max@ejemplo.com",
+        perdido: false,
+        foto: "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=300&q=80"
+      },
+      "PET-002": {
+        nombre: "Luna",
+        raza: "Gato • Doméstico pelo corto",
+        nacimiento: "2024-09-02",
+        alergias: "Sin alergias. Gata de interior, por favor no soltarla.",
+        vacunas: ["Triple Felina (2026-03-01)", "Rabia (2026-03-01)"],
+        zona: "Col. Universidad",
+        modo_contacto: "directo",
+        telefono: "5217221112233",
+        correo: "dueno.luna@ejemplo.com",
+        perdido: true,
+        foto: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=300&q=80"
+      }
+    };
+
+    const params = new URLSearchParams(window.location.search);
+    const petId = params.get("id") || "PET-001";
+    const pet = MASCOTAS_DB[petId] || MASCOTAS_DB["PET-001"];
+
+    function calcularEdad(fechaStr) {
+      const hoy = new Date();
+      const nac = new Date(fechaStr + "T00:00:00");
+      let anos = hoy.getFullYear() - nac.getFullYear();
+      let meses = hoy.getMonth() - nac.getMonth();
+      if (meses < 0 || (meses === 0 && hoy.getDate() < nac.getDate())) {
+        anos--;
+        meses += 12;
+      }
+      return anos > 0 ? `${anos} año(s) y ${meses} mes(es)` : `${meses} mes(es)`;
+    }
+
+    document.getElementById("petName").textContent = pet.nombre;
+    document.getElementById("petBreed").textContent = pet.raza;
+    document.getElementById("petPhoto").src = pet.foto;
+    document.getElementById("petAlerts").textContent = pet.alergias;
+    document.getElementById("petDob").textContent = pet.nacimiento;
+    document.getElementById("petAge").textContent = calcularEdad(pet.nacimiento);
+    document.getElementById("petZone").textContent = pet.zona;
+
+    if (pet.perdido) {
+      document.getElementById("lostBanner").style.display = "block";
+    }
+
+    const vacList = document.getElementById("petVaccines");
+    pet.vacunas.forEach(v => {
+      const li = document.createElement("li");
+      li.textContent = v;
+      vacList.appendChild(li);
+    });
+
+    if (pet.modo_contacto === "directo") {
+      document.getElementById("directContact").classList.remove("hidden");
+      const msg = encodeURIComponent(`Hola, encontré a ${pet.nombre} escaneando su placa NFC.`);
+      document.getElementById("waLink").href = `https://wa.me/${pet.telefono}?text=${msg}`;
+    } else {
+      document.getElementById("privateContact").classList.remove("hidden");
+      document.getElementById("bridgeForm").action = `https://formsubmit.co/${pet.correo}`;
+    }
+
+    function compartirUbicacionDirecta() {
+      if (!navigator.geolocation) return alert("Tu navegador no soporta ubicación.");
+      navigator.geolocation.getCurrentPosition(pos => {
+        const mapsUrl = `https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`;
+        const msg = encodeURIComponent(`Hola, encontré a ${pet.nombre}. Esta es mi ubicación actual: ${mapsUrl}`);
+        window.open(`https://wa.me/${pet.telefono}?text=${msg}`, "_blank");
+      }, () => alert("No se pudo obtener la ubicación. Revisa los permisos GPS."));
+    }
+
+    function capturarUbicacionFormulario() {
+      if (!navigator.geolocation) return alert("Tu navegador no soporta ubicación.");
+      navigator.geolocation.getCurrentPosition(pos => {
+        document.getElementById("gpsField").value = `https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`;
+      }, () => alert("Activa el permiso de ubicación para adjuntarla."));
+    }
+  </script>
+</body>
+</html>
+```[cite: 1, 2]
